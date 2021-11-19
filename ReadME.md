@@ -1,4 +1,7 @@
-# Masked Autoencoders Are Scalable Vision Learners
+# An pytorch implementation of [Masked Autoencoders Are Scalable Vision Learners](https://arxiv.org/abs/2111.06377)
+
+This is a coarse version for MAE, only make the pretrain model, the finetune and linear is comming soon.
+
 
 ### 1. Introduction
 This repo is the MAE-vit model which impelement with pytorch, no reference any reference code so this is a non-official version. Because of the limitation of time and machine, I only trained the vit-tiny model for encoder.
