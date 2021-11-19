@@ -1,4 +1,5 @@
 cluster
+.vscode
 config
 __pycache__
 *.pth

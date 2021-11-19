@@ -195,7 +195,7 @@ class VisionTransfromersTiny(nn.Module):
             nn.init.ones_(module.weight)
     
     def _load_mae_pretrain(self):
-        state_dict = torch.load("F:/业务数据/hago数据/0701-0705/0716/pr_result/vit-mae_losses_0.20791142220139502.pth", map_location="cpu")['state_dict']
+        state_dict = torch.load("weights/vit-mae_losses_0.20791142220139502.pth", map_location="cpu")['state_dict']
         ckpt_state_dict = {}
         for key, value in state_dict.items():
             if 'Encoder.' in key:

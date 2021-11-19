@@ -1,4 +1,5 @@
 import torch
+import argparse
 from PIL import Image 
 from torchvision.transforms import transforms
 from torch.cuda.amp import autocast as autocast
@@ -6,10 +7,14 @@ import numpy as np
 from model.Transformers.VIT.mae import MAEVisionTransformers as MAE
 from loss.mae_loss import build_mask
 
-    
-image = Image.open("E:/imagnet_val/val/ILSVRC2012_val_00010980.JPEG")
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--ckpt', default='checkpoints', type=str)
+parser.add_argument('--test_image', default='logs', type=str)
+
+image = Image.open(args.test_image)
 raw_image = image.resize((224, 224))
-raw_image.save("./src_image.jpg")
+raw_image.save("output/src_image.jpg")
 raw_tensor  = torch.from_numpy(np.array(raw_image))
 print(raw_tensor.shape)
 
@@ -25,10 +30,7 @@ image = transforms.Compose([
 )(image)
 image_tensor = image.unsqueeze(0)
 
-ckpt = torch.load("F:/业务数据/hago数据/0701-0705/0716/pr_result/vit-mae_losses_0.20791142220139502.pth", map_location="cpu")['state_dict']
-for key, value in ckpt.items():
-    pass 
-
+ckpt = torch.load(args.ckpt, map_location="cpu")['state_dict']
 
 model = MAE(
     img_size = 224,
@@ -42,13 +44,6 @@ model = MAE(
     mask_ratio = 0.75
 )
 
-
-# a = torch.randn(2, 3, 224, 224)
-# a = a.cuda()
-# model.cuda()
-# with autocast():
-#     b, _ = model(a)
-# print(b.shape)
 
 print(model)
 model.load_state_dict(ckpt, strict=True)
@@ -66,7 +61,7 @@ output_image = output_image * std + mean
 output_image = output_image * 255
 import cv2 
 output_image = output_image[:,:,::-1]
-cv2.imwrite("./output_image1.jpg", output_image)
+cv2.imwrite("output/output_image.jpg", output_image)
 
 
 mask_map = build_mask(mask_index, patch_size=16, img_size=224)
@@ -87,7 +82,7 @@ non_mask_image  += mask_map
 # print(non_mask_image)
 non_mask_image = non_mask_image.cpu().numpy()
 print(non_mask_image.shape)
-cv2.imwrite("mask_image.jpg", non_mask_image[:,:,::-1])
+cv2.imwrite("output/mask_image.jpg", non_mask_image[:,:,::-1])
 
 print(output_image)
     
