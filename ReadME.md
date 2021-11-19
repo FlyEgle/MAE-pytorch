@@ -75,7 +75,7 @@ The Mae-Vit-tiny pretrain models is [here](https://drive.google.com/file/d/1I0Ez
         MKL_NUM_THREADS=1
         export OMP_NUM_THREADS
         export MKL_NUM_THREADS
-        cd /data/jiangmingchao/data/code/ImageClassification;
+        cd MAE-Pytorch;
         CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -W ignore -m torch.distributed.launch --nproc_per_node 8 train_mae.py \
         --batch_size 256 \
         --num_workers 32 \
