@@ -38,7 +38,7 @@ This repo is the MAE-vit model which impelement with pytorch, no reference any r
 
 - **DecoderConfig**
     
-    |Encoder|dims|depth|heads|mask|
+    |Decoder|dims|depth|heads|mask|
     |:---:|:---:|:---:|:---:|:---:|
     |VIT-TINY/16|512|8|16|0.75|
     |VIT-Base/16|512|8|16|0.75|
