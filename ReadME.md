@@ -171,6 +171,6 @@ You can download to test the restruction result. Put the ckpt in ```weights``` f
 - [ ] SwinTransformers for MAE.
 - [ ] Finetune & Linear training.
 
-Finetune is trainig, the weights may be comming soon. There may still be problems with the implementation, welcome make discussion and pr code.
+Finetune is trainig, the weights may be comming soon. There may be have some problems with the implementation, welcome to make discussion and submission code.
 
 
