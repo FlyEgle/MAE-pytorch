@@ -14,9 +14,9 @@ import os
 import torch.distributed as dist
 
 # mae vit
-# from model.Transformers.VIT.mae import MAEVisionTransformers as MAE
+from model.Transformers.VIT.mae import MAEVisionTransformers as MAE
 # finetune vit
-from model.Transformers.VIT.mae import VisionTransfromersTiny as MAE
+# from model.Transformers.VIT.mae import VisionTransfromersTiny as MAE
 from loss.mae_loss import MSELoss, build_mask
 
 # experiement
@@ -188,6 +188,7 @@ def main_worker(args):
     }
 
     # model MAE vit
+    
     if args.finetune:
         model = MAE(
             img_size = 224,
@@ -198,12 +199,14 @@ def main_worker(args):
             num_classes = args.num_classes
         )
     else:
+        # vit tiny & vit base 
+        # vit base decoder: 512 8 16
         model = MAE(
             img_size = args.crop_size,
             patch_size = args.patch_size,  
-            encoder_dim = 192,
+            encoder_dim = 768,
             encoder_depth = 12,
-            encoder_heads = 3,
+            encoder_heads = 12,
             decoder_dim = 512,
             decoder_depth = 8,
             decoder_heads = 16, 

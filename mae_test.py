@@ -9,8 +9,11 @@ from loss.mae_loss import build_mask
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--ckpt', default='checkpoints', type=str)
-parser.add_argument('--test_image', default='logs', type=str)
+parser.add_argument('--ckpt', default='F:/业务数据/vit-mae_losses_0.20102281799793242.pth', type=str)
+parser.add_argument('--test_image', default='E:/imagnet_val/val/ILSVRC2012_val_00039841.JPEG', type=str)
+
+args = parser.parse_args()
+
 
 image = Image.open(args.test_image)
 raw_image = image.resize((224, 224))
@@ -35,9 +38,9 @@ ckpt = torch.load(args.ckpt, map_location="cpu")['state_dict']
 model = MAE(
     img_size = 224,
     patch_size = 16,  
-    encoder_dim = 192,
+    encoder_dim = 768,
     encoder_depth = 12,
-    encoder_heads = 3,
+    encoder_heads = 12,
     decoder_dim = 512,
     decoder_depth = 8,
     decoder_heads = 16, 
