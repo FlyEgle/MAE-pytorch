@@ -133,7 +133,7 @@ class MAEVisionTransformers(nn.Module):
         return restore_image, mask_index
 
 
-class VisionTransfromersTiny(nn.Module):
+class VisionTransfromers(nn.Module):
     def __init__(self,
                  img_size = 224,
                  patch_size = 16,
@@ -143,7 +143,7 @@ class VisionTransfromersTiny(nn.Module):
                  num_classes = 1000
                  
                  ):
-        super().__init__()
+        super(VisionTransfromers, self).__init__()
         self.img_size = img_size 
         self.embed_dim = embed_dim
         self.depth = depth
