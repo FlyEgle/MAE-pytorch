@@ -10,7 +10,7 @@ from loss.mae_loss import build_mask
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--ckpt', default='F:/业务数据/vit-mae_losses_0.20102281799793242.pth', type=str)
-parser.add_argument('--test_image', default='E:/imagnet_val/val/ILSVRC2012_val_00039841.JPEG', type=str)
+parser.add_argument('--test_image', default='E:/val/ILSVRC2012_val_00000004.JPEG', type=str)
 
 args = parser.parse_args()
 
@@ -62,6 +62,7 @@ output_image = output.squeeze(0)
 output_image = output_image.permute(1,2,0).cpu().numpy()
 output_image = output_image * std + mean
 output_image = output_image * 255
+
 import cv2 
 output_image = output_image[:,:,::-1]
 cv2.imwrite("output/output_image.jpg", output_image)
