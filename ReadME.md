@@ -70,10 +70,12 @@ Large models work significantly better than small models.
 
 - **weights**
     - **pretrian**
+        
         Vit-Tiny/16 pretrain models is [here](https://drive.google.com/file/d/1I0EzCLYLmHBfhIaESFvWGlhuQuJ8xPw6/view?usp=sharing)
         
         Vit-Base/16 pretrain models is [here](https://drive.google.com/file/d/1wxSNfWDbLCoSMelZCo1uj6MXcHDd8G0b/view?usp=sharing)
     - **training from strach**
+        
         Trainig the raw vit from strach follow kaiming paper config, but not use the EMA for vit-base.And use the sin-cos position embeeding replace the learnable position embeeding.
         Vit-Base/16 strach model is [here](https://drive.google.com/file/d/1kn0AqH2TB59DBfgH3mnKlsCSIx4UVFaz/view?usp=sharing), top-1 acc is **81.182%**, paper is **82.3%** with EMA. 
     
