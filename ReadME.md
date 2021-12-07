@@ -69,9 +69,14 @@ Show the pretrain result on the imaget val dataset, left is the mask image, midd
 Large models work significantly better than small models. 
 
 - **weights**
-
-    Vit-Tiny/16 pretrain models is [here](https://drive.google.com/file/d/1I0EzCLYLmHBfhIaESFvWGlhuQuJ8xPw6/view?usp=sharing)
-    Vit-Base/16 pretrain models is [here](https://drive.google.com/file/d/1wxSNfWDbLCoSMelZCo1uj6MXcHDd8G0b/view?usp=sharing)
+    - **pretrian**
+        Vit-Tiny/16 pretrain models is [here](https://drive.google.com/file/d/1I0EzCLYLmHBfhIaESFvWGlhuQuJ8xPw6/view?usp=sharing)
+        
+        Vit-Base/16 pretrain models is [here](https://drive.google.com/file/d/1wxSNfWDbLCoSMelZCo1uj6MXcHDd8G0b/view?usp=sharing)
+    - **training from strach**
+        Trainig the raw vit from strach follow kaiming paper config, but not use the EMA for vit-base.And use the sin-cos position embeeding replace the learnable position embeeding.
+        Vit-Base/16 strach model is [here](https://drive.google.com/file/d/1kn0AqH2TB59DBfgH3mnKlsCSIx4UVFaz/view?usp=sharing), top-1 acc is **81.182%**, paper is **82.3%** with EMA. 
+    
 
 You can download to test the restruction result. Put the ckpt in ```weights``` folder.
 
@@ -163,8 +168,9 @@ You can download to test the restruction result. Put the ckpt in ```weights``` f
     python mae_test.py --test_image xxx.jpg --ckpt weights/weights.pth
     ```
     2. classification
-    TODO:
-        - [ ] training
+    ```python
+    python inference.py --test_file val_imagenet.log --ckpt weights/weights.pth
+    ```
 
 ### 6. TODO
 - [x] VIT-BASE model training.
