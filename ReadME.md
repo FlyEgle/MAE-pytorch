@@ -78,6 +78,10 @@ Large models work significantly better than small models.
         
         Trainig the raw vit from strach follow kaiming paper config, but not use the EMA for vit-base.And use the sin-cos position embeeding replace the learnable position embeeding.
         Vit-Base/16 strach model is [here](https://drive.google.com/file/d/1kn0AqH2TB59DBfgH3mnKlsCSIx4UVFaz/view?usp=sharing), top-1 acc is **81.182%**, paper is **82.3%** with EMA. 
+
+    - **Finetune**
+
+        Result is **81.5%**, but the ckpt have lost by ```rm -rf```. Higher than the training from strach.
     
 
 You can download to test the restruction result. Put the ckpt in ```weights``` folder.
@@ -158,7 +162,39 @@ You can download to test the restruction result. Put the ckpt in ```weights``` f
 
     2. Finetune
     TODO:
-        - [ ] training
+        - [x] training
+        ```bash
+            #!/bin/bash
+            OMP_NUM_THREADS=1
+            MKL_NUM_THREADS=1
+            export OMP_NUM_THREADS
+            export MKL_NUM_THREADS
+            cd MAE-Pytorch;
+            CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -W ignore -m torch.distributed.launch --nproc_per_node 8 train_mae.py \
+            --batch_size 256 \
+            --num_workers 32 \
+            --lr 1.2e-3 \
+            --optimizer_name "adamw" \
+            --opt_betas 0.9 0.999 \
+            --cosine 1 \
+            --finetune 1 \
+            --max_epochs 100 \
+            --warmup_epochs 5 \
+            --num-classes 1000 \
+            --crop_size 224 \
+            --patch_size 16 \
+            --color_prob 0.0 \
+            --calculate_val 0 \
+            --weight_decay 5e-2 \
+            --lars 0 \
+            --mixup 0.8 \
+            --cutmix 1.0 \
+            --smoothing 0.1 \
+            --train_file $train_file \
+            --val_file $val_file \
+            --checkpoints-path $ckpt_folder \
+            --log-dir $log_folder
+            ```
     3. Linear
     TODO:
         - [ ] training
@@ -177,8 +213,8 @@ You can download to test the restruction result. Put the ckpt in ```weights``` f
 ### 6. TODO
 - [x] VIT-BASE model training.
 - [ ] SwinTransformers for MAE.
-- [ ] Finetune & Linear training.
+- [x] Finetune & Linear training.
 
-Finetune is trainig, the weights may be comming soon. There may be have some problems with the implementation, welcome to make discussion and submission code.
+There may be have some problems with the implementation, welcome to make discussion and submission code.
 
 
