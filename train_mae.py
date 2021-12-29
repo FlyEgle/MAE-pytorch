@@ -16,7 +16,7 @@ import torch.distributed as dist
 # mae vit
 from model.Transformers.VIT.mae import MAEVisionTransformers as MAE
 # finetune vit
-# from model.Transformers.VIT.mae import VisionTransfromersTiny as MAE
+from model.Transformers.VIT.mae import VisionTransfromers as MAEFinetune
 from loss.mae_loss import MSELoss, build_mask
 
 # experiement
@@ -26,9 +26,10 @@ from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from utils.optimizer_step import Optimizer, build_optimizer
 from utils.LARS import LARC
+from utils.optim_factory import create_optimizer, get_parameter_groups, LayerDecayValueAssigner
 
 from data.TransformersDataset import ImageDataset
-# from data.ImagenetDataset import ImageDataset
+from data.TransformersDataset import ImageDatasetTNF as ImageDatasetPretrain
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DataParallel
 from torch.utils.data import DataLoader
@@ -36,6 +37,8 @@ from torch.cuda.amp import autocast as autocast
 
 from timm.data import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+
+from timm.utils import ModelEma
 
 
 import torch.multiprocessing as mp
@@ -64,11 +67,11 @@ parser.add_argument('--val_file', type=str,
 parser.add_argument('--num-classes', type=int)
 parser.add_argument('--crop_size', type=int, default=224)
 parser.add_argument('--num_classes', type=int, default=1000)
-parser.add_argument('--color_prob', type=float,  default=0.0)
 
 # ----- checkpoints log dir
 parser.add_argument('--checkpoints-path', default='checkpoints', type=str)
 parser.add_argument('--log-dir', default='logs', type=str)
+parser.add_argument('--randomearse', default=0, type=int)
 
 # ---- optimizer
 parser.add_argument('--optimizer_name', default="adamw", type=str)
@@ -78,16 +81,44 @@ parser.add_argument('--batch_size', default=64, type=int)
 parser.add_argument('--num_workers', default=8, type=int)
 parser.add_argument('--cosine', default=0, type=int)
 parser.add_argument('--weight_decay', default=5e-2, type=float)
+parser.add_argument('--layer_decay', default=0.75, type=float)
 
 # --- vit 
 parser.add_argument('--patch_size', default=16, type=int)
 parser.add_argument('--calculate_val', default=0, type=int)
 parser.add_argument('--finetune', default=0, type=int)
+parser.add_argument('--mae_pretrain', default=1, type=int)
 
+# Augmentation parameters
+parser.add_argument('--color_jitter', type=float, default=0.4, metavar='PCT',
+                    help='Color jitter factor (default: 0.4)')
+parser.add_argument('--aa', type=str, default='rand-m9-mstd0.5-inc1', metavar='NAME',
+                    help='Use AutoAugment policy. "v0" or "original". " + "(default: rand-m9-mstd0.5-inc1)'),
+parser.add_argument('--train_interpolation', type=str, default='bicubic',
+                    help='Training interpolation (random, bilinear, bicubic default: "bicubic")')
+
+# * Random Erase params
+parser.add_argument('--reprob', type=float, default=0.25, metavar='PCT',
+                    help='Random erase prob (default: 0.25)')
+parser.add_argument('--remode', type=str, default='pixel',
+                    help='Random erase mode (default: "pixel")')
+parser.add_argument('--recount', type=int, default=1,
+                    help='Random erase count (default: 1)')
+parser.add_argument('--resplit', action='store_true', default=False,
+                    help='Do not random erase first (clean) augmentation split')
 
 # batchsize
 parser.add_argument('--lars', default=1, type=int, help="use the lars optimizer for big batchsize")
 parser.add_argument('--lars_confience', default=2e-2, type=float)
+
+
+# optimizer
+parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
+                        help='Optimizer (default: "adamw"')
+parser.add_argument('--opt_eps', default=1e-8, type=float, metavar='EPSILON',
+                    help='Optimizer Epsilon (default: 1e-8)')
+parser.add_argument('--opt_betas', default=None, type=float, nargs='+', metavar='BETA',
+                    help='Optimizer Betas (default: None, use opt default)')
 
 # MixUp
 # * Mixup params
@@ -188,19 +219,21 @@ def main_worker(args):
     }
 
     # model MAE vit
-    
     if args.finetune:
-        model = MAE(
+        model = MAEFinetune(
             img_size = 224,
             patch_size = 16,
-            embed_dim = 192,
+            embed_dim = 768,
             depth = 12,
-            num_heads = 3,
-            num_classes = args.num_classes
+            num_heads = 12,
+            num_classes = args.num_classes,
+            mae_pretrain = args.mae_pretrain
         )
     else:
         # vit tiny & vit base 
-        # vit base decoder: 512 8 16
+        # vit base: decoder: 384 4 12 
+        # vit base new: decoder: 512 8 16
+        
         model = MAE(
             img_size = args.crop_size,
             patch_size = args.patch_size,  
@@ -217,7 +250,22 @@ def main_worker(args):
         print(f"===============model arch ===============")
         print(model)
 
-    # model mode
+    if args.finetune:
+        num_layers = model.get_num_layers()
+        print(num_layers)
+        if args.layer_decay < 1.0:
+            assigner = LayerDecayValueAssigner(list(args.layer_decay ** (num_layers + 1 - i) for i in range(num_layers + 2)))
+        else:
+            assigner = None
+
+    if assigner is not None:
+        if args.local_rank == 0:
+            print("Assigned values = %s" % str(assigner.values))
+        
+    skip_weight_decay_list = model.no_weight_decay()
+    print("Skip weight decay list: ", skip_weight_decay_list)
+    
+    
     model.train()
 
     if torch.cuda.is_available():
@@ -225,12 +273,20 @@ def main_worker(args):
 
     # optimizer
     print("optimizer name: ", args.optimizer_name)
-    optimizer = Optimizer(args.optimizer_name)(
-            param=model.parameters(),
-            lr=args.lr,
-            weight_decay=args.weight_decay,
-            finetune=args.finetune
-    )
+    if args.finetune:
+        optimizer = create_optimizer(
+            args, model, skip_list=skip_weight_decay_list,
+            get_num_layer=assigner.get_layer_id if assigner is not None else None, 
+            get_layer_scale=assigner.get_scale if assigner is not None else None)
+        print(optimizer)
+        
+    else:
+         optimizer = Optimizer(args.optimizer_name)(
+                param=model.parameters(),
+                lr=args.lr,
+                weight_decay=args.weight_decay,
+                finetune=args.finetune
+        )
 
     if args.lars:
         optimizer = LARC(optimizer, trust_coefficient=args.lars_confience)
@@ -242,22 +298,48 @@ def main_worker(args):
                              find_unused_parameters=True)
 
     # dataset & dataloader
-    train_dataset = ImageDataset(
-        image_file=args.train_file,
-        train_phase=True,
-        crop_size=args.crop_size,
-        shuffle=True,
-        interpolation="bilinear",
-        auto_augment="rand",
-        color_prob=args.color_prob,
-        hflip_prob=0.5
-    )
+    # finetune
+    
+    if args.finetune:
+        if args.randomearse:
+            train_dataset = ImageDataset(
+                image_file=args.train_file,
+                train_phase=True,
+                crop_size=args.crop_size,
+                shuffle=True,
+                args=args
+            )
+        else:
+            train_dataset = ImageDatasetPretrain(
+                image_file = args.train_file,
+                train_phase = True,
+                crop_size = args.crop_size,
+                interpolation = args.train_interpolation,
+                auto_augment = args.aa,
+                color_prob = args.color_jitter
+            )
+        print("use the imagenet dataset finetune!!!")
+    # pretrain
+    else: 
+        train_dataset = ImageDatasetPretrain(
+            image_file = args.train_file, 
+            train_phase = True,
+            crop_size = args.crop_size,
+            shuffle = True,
+            interpolation = args.interpolation,
+            auto_augment = args.aa,
+            hflip_prob = 0.5,
+            color_prob = args.color_jitter
+        )
+        print("use the imagenet dataset pretrain!!!")
+
 
     validation_dataset = ImageDataset(
         image_file=args.val_file,
         train_phase=False,
         crop_size=args.crop_size,
-        shuffle=False
+        shuffle=False,
+        args = args 
     )
 
     if args.local_rank == 0:
@@ -304,7 +386,7 @@ def main_worker(args):
             mixup_alpha=args.mixup, cutmix_alpha=args.cutmix, cutmix_minmax=args.cutmix_minmax,
             prob=args.mixup_prob, switch_prob=args.mixup_switch_prob, mode=args.mixup_mode,
             label_smoothing=args.smoothing, num_classes=args.num_classes)
-        print("use the mixup function ")
+        print("use the mixup function ", mixup_fn)
     
     
     start_epoch = 1
@@ -376,7 +458,6 @@ def main_worker(args):
         # model mode
         model.train()
 
-
 # train function
 def train(args,
           scaler,
@@ -394,7 +475,7 @@ def train(args,
           ):
     """Traing with the batch iter for get the metric
     """
-    model.train()
+    # model.train()
     # device = model.device
     loader_length = len(train_loader)
     for batch_idx, data in enumerate(train_loader):
@@ -510,6 +591,7 @@ def val(
     """Validation and get the metric
     """
     model.eval()
+    
     epoch_losses, epoch_accuracy = 0.0, 0.0
     criterion = nn.CrossEntropyLoss()
     
