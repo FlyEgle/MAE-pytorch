@@ -161,7 +161,7 @@ class ImageDatasetTNF(Dataset):
             ]
 
             auto_tf = []
-            if self.auto_augment:
+            if self.auto_augment != ' ':
                 assert isinstance(auto_augment, str)
                 if isinstance(self.crop_size, (tuple, list)):
                     img_size_min = min(self.crop_size)
