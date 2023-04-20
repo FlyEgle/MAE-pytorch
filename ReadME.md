@@ -218,3 +218,7 @@ You can download to test the restruction result. Put the ckpt in ```weights``` f
 There may be have some problems with the implementation, welcome to make discussion and submission code.
 
 
+### License
+This project is released under the MIT license
+
+
